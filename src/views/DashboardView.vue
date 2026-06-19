@@ -4,6 +4,7 @@ import AboutCard from '@/components/AboutCard.vue'
 import DepartmentProgressCard from '@/components/DepartmentProgressCard.vue'
 import FilterBar from '@/components/FilterBar.vue'
 import KpiCard from '@/components/KpiCard.vue'
+import ReceiptModal from '@/components/ReceiptModal.vue'
 import Sidebar from '@/components/Sidebar.vue'
 import SubmissionTable from '@/components/SubmissionTable.vue'
 import TopHeader from '@/components/TopHeader.vue'
@@ -22,6 +23,7 @@ const storedTheme = window.localStorage.getItem('soujimate-theme')
 const theme = ref(storedTheme || (
   window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 ))
+const selectedEmployee = ref(null)
 const {
   areaOptions,
   departmentProgress,
@@ -58,6 +60,14 @@ function toggleTheme() {
  *
  * @return {void}
  */
+function selectEmployee(employee) {
+  selectedEmployee.value = employee
+}
+
+function closeModal() {
+  selectedEmployee.value = null
+}
+
 function logout() {
   emit('logout')
 }
@@ -117,7 +127,10 @@ function logout() {
           </section>
 
           <div class="content-grid">
-            <SubmissionTable :rows="submissionLogs" />
+            <SubmissionTable
+              :rows="submissionLogs"
+              @select-employee="selectEmployee"
+            />
 
             <aside class="right-column" aria-label="Dashboard details">
               <DepartmentProgressCard :departments="departmentProgress" />
@@ -127,5 +140,10 @@ function logout() {
         </template>
       </div>
     </main>
+
+    <ReceiptModal
+      :employee="selectedEmployee"
+      @close="closeModal"
+    />
   </div>
 </template>

@@ -5,6 +5,7 @@ import AdminAreaSummary from '@/components/AdminAreaSummary.vue'
 import AdminDepartmentProgress from '@/components/AdminDepartmentProgress.vue'
 import FilterBar from '@/components/FilterBar.vue'
 import KpiCard from '@/components/KpiCard.vue'
+import ReceiptModal from '@/components/ReceiptModal.vue'
 import Sidebar from '@/components/Sidebar.vue'
 import SubmissionTable from '@/components/SubmissionTable.vue'
 import TopHeader from '@/components/TopHeader.vue'
@@ -27,6 +28,7 @@ const storedTheme = window.localStorage.getItem('soujimate-theme')
 const theme = ref(storedTheme || (
   window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 ))
+const selectedEmployee = ref(null)
 const departmentLabel = computed(() => `${props.authSession.division} Department`)
 const profileMeta = computed(() => `${props.authSession.division} Lead`)
 const {
@@ -65,6 +67,14 @@ function toggleTheme() {
  *
  * @return {void}
  */
+function selectEmployee(employee) {
+  selectedEmployee.value = employee
+}
+
+function closeModal() {
+  selectedEmployee.value = null
+}
+
 function logout() {
   emit('logout')
 }
@@ -140,6 +150,7 @@ function logout() {
             title="Department Submission Log"
             :show-email="false"
             :show-export="false"
+            @select-employee="selectEmployee"
           />
 
           <aside class="right-column admin-right-column" aria-label="Department details">
@@ -157,5 +168,10 @@ function logout() {
         </div>
       </div>
     </main>
+
+    <ReceiptModal
+      :employee="selectedEmployee"
+      @close="closeModal"
+    />
   </div>
 </template>

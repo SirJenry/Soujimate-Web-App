@@ -7,6 +7,12 @@ defineProps({
   showEmail: { type: Boolean, default: true },
   showExport: { type: Boolean, default: true },
 })
+
+const emit = defineEmits(['select-employee'])
+
+function handleRowClick(employee) {
+  emit('select-employee', employee)
+}
 </script>
 
 <template>
@@ -39,7 +45,7 @@ defineProps({
           <tr v-if="rows.length === 0">
             <td class="empty-state" colspan="5">No employees match these filters.</td>
           </tr>
-          <tr v-for="employee in rows" :key="employee.id" :class="{ 'is-missing': employee.status === 'Missing' }">
+          <tr v-for="employee in rows" :key="employee.id" class="submission-row" :class="{ 'is-missing': employee.status === 'Missing' }" @click="handleRowClick(employee)">
             <td>
               <div class="employee-cell">
                 <span class="employee-avatar">{{ employee.initials }}</span>

@@ -174,6 +174,9 @@ export function useDashboardData() {
       task: employee.assignedTask || employee.assigned_task || '-',
       status: submission ? 'Submitted' : 'Missing',
       time: submission ? formatSubmissionTime(submission.timestamp) : '-',
+      submissionTimestamp: submission?.timestamp || null,
+      submissionProof: submission?.receiptImages || null,
+      submissionDate: submission?.submissionDate || null,
     }
   }))
 

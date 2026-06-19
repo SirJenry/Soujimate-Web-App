@@ -102,5 +102,13 @@ defineProps({
     <template v-else-if="name === 'download'">
       <path d="M12 3v12M7 10l5 5 5-5M5 20h14" />
     </template>
+    <template v-else-if="name === 'close'">
+      <path d="M18 6 6 18M6 6l12 12" />
+    </template>
+    <template v-else-if="name === 'image'">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <path d="m21 15-5-5L5 21" />
+    </template>
   </svg>
 </template>

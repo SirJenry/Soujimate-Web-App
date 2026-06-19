@@ -1,14 +1,14 @@
 <script setup>
-import { ref } from 'vue'
-import AppIcon from './AppIcon.vue'
-import BrandMark from './BrandMark.vue'
-import { signInAuthorizedUser } from '@/services/authService'
+import { ref } from "vue";
+import AppIcon from "./AppIcon.vue";
+import BrandMark from "./BrandMark.vue";
+import { signInAuthorizedUser } from "@/services/authService";
 
-const email = ref('')
-const password = ref('')
-const showPassword = ref(false)
-const error = ref('')
-const loading = ref(false)
+const email = ref("");
+const password = ref("");
+const showPassword = ref(false);
+const error = ref("");
+const loading = ref(false);
 
 /******************************************************************************/
 /* Processing Hierarchy                                                       */
@@ -24,15 +24,15 @@ const loading = ref(false)
  * @return {Promise<void>}
  */
 async function submitLogin() {
-  error.value = ''
-  loading.value = true
+  error.value = "";
+  loading.value = true;
 
   try {
-    await signInAuthorizedUser(email.value, password.value)
+    await signInAuthorizedUser(email.value, password.value);
   } catch {
-    error.value = 'Invalid email or password.'
+    error.value = "Invalid email or password.";
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 </script>
@@ -42,7 +42,7 @@ async function submitLogin() {
     <header class="login-card__header">
       <BrandMark login />
       <h1 id="login-title" class="login-card__title">Soujimate</h1>
-      <p class="login-card__subtitle">Admin Portal Login</p>
+      <p class="login-card__subtitle">Admin/Superadmin Portal Login</p>
     </header>
 
     <form class="login-form" @submit.prevent="submitLogin">
@@ -89,14 +89,14 @@ async function submitLogin() {
       <p v-if="error" class="login-error" role="alert">{{ error }}</p>
 
       <button class="login-button" type="submit" :disabled="loading">
-        <span>{{ loading ? 'Signing in...' : 'Login' }}</span>
+        <span>{{ loading ? "Signing in..." : "Login" }}</span>
         <AppIcon name="arrow-right" />
       </button>
     </form>
 
     <footer class="login-card__footer">
       <AppIcon name="shield" />
-      <span>Superadmin access only</span>
+      <span>Admin/Superadmin access only</span>
     </footer>
   </section>
 </template>
