@@ -1,7 +1,7 @@
 import { getApp, getApps, initializeApp } from 'firebase/app'
-import { getAuth } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
-import { getStorage } from 'firebase/storage'
+import { getAuth, connectAuthEmulator } from 'firebase/auth'
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore'
+import { getStorage, connectStorageEmulator } from 'firebase/storage'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -12,10 +12,38 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig)
+const requiredKeys = ['apiKey', 'authDomain', 'projectId']
+const isConfigured = requiredKeys.every(
+  (key) => firebaseConfig[key] && firebaseConfig[key].length > 0,
+)
 
-export const auth = getAuth(app)
-export const db = getFirestore(app)
-export const storage = getStorage(app)
+let app = null
+let auth = null
+let db = null
+let storage = null
+
+if (isConfigured) {
+  try {
+    app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig)
+    auth = getAuth(app)
+    db = getFirestore(app)
+    storage = getStorage(app)
+
+    if (import.meta.env.VITE_USE_FIREBASE_EMULATORS === 'true') {
+      connectAuthEmulator(auth, 'http://localhost:9099')
+      connectFirestoreEmulator(db, 'localhost', 8080)
+      connectStorageEmulator(storage, 'localhost', 9199)
+    }
+  } catch (error) {
+    console.error('Firebase initialization failed:', error)
+  }
+} else {
+  console.warn(
+    'Firebase is not configured. Set VITE_FIREBASE_API_KEY, ' +
+    'VITE_FIREBASE_AUTH_DOMAIN, and VITE_FIREBASE_PROJECT_ID env vars.',
+  )
+}
+
+export { auth, db, storage }
 
 export default app

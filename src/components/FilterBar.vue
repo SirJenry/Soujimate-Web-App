@@ -10,6 +10,7 @@ const props = defineProps({
   area: { type: String, default: '' },
   divisionOptions: { type: Array, default: () => [] },
   areaOptions: { type: Array, default: () => [] },
+  showDivision: { type: Boolean, default: true },
 })
 
 defineEmits([
@@ -84,7 +85,7 @@ function openDatePicker() {
       />
     </label>
 
-    <label class="select-shell">
+    <label v-if="showDivision" class="select-shell">
       <select
         :value="division"
         class="filter-control filter-select"

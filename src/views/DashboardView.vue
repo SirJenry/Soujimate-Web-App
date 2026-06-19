@@ -9,7 +9,13 @@ import SubmissionTable from '@/components/SubmissionTable.vue'
 import TopHeader from '@/components/TopHeader.vue'
 import { useDashboardData } from '@/composables/useDashboardData'
 
-const emit = defineEmits(['navigate'])
+const emit = defineEmits(['logout'])
+
+/******************************************************************************/
+/* Processing Hierarchy                                                       */
+/******************************************************************************/
+// toggleTheme (1.0) Toggle and persist the dashboard color theme.
+// logout      (2.0) Request termination of the authenticated session.
 
 const sidebarOpen = ref(false)
 const storedTheme = window.localStorage.getItem('soujimate-theme')
@@ -44,9 +50,16 @@ function toggleTheme() {
   window.localStorage.setItem('soujimate-theme', theme.value)
 }
 
+/**
+ * <Layer number> (2.0)
+ *
+ * <Processing name> logout
+ * <Function> Request Firebase logout from the application shell.
+ *
+ * @return {void}
+ */
 function logout() {
-  // TODO: Sign out through Firebase once authentication is connected.
-  emit('navigate', '/')
+  emit('logout')
 }
 </script>
 

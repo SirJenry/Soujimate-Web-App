@@ -2,16 +2,38 @@
 import { ref } from 'vue'
 import AppIcon from './AppIcon.vue'
 import BrandMark from './BrandMark.vue'
+import { signInAuthorizedUser } from '@/services/authService'
 
-const emit = defineEmits(['login'])
-
-const email = ref('admin@soujimate.com')
-const password = ref('soujimate')
+const email = ref('')
+const password = ref('')
 const showPassword = ref(false)
+const error = ref('')
+const loading = ref(false)
 
-function submitLogin() {
-  // TODO: Replace this mock navigation with Firebase authentication and SuperAdmin role validation.
-  emit('login')
+/******************************************************************************/
+/* Processing Hierarchy                                                       */
+/******************************************************************************/
+// submitLogin (1.0) Authenticate an authorized Firebase portal account.
+
+/**
+ * <Layer number> (1.0)
+ *
+ * <Processing name> submitLogin
+ * <Function> Authenticate an authorized Admin or Superadmin account.
+ *
+ * @return {Promise<void>}
+ */
+async function submitLogin() {
+  error.value = ''
+  loading.value = true
+
+  try {
+    await signInAuthorizedUser(email.value, password.value)
+  } catch {
+    error.value = 'Invalid email or password.'
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -20,7 +42,7 @@ function submitLogin() {
     <header class="login-card__header">
       <BrandMark login />
       <h1 id="login-title" class="login-card__title">Soujimate</h1>
-      <p class="login-card__subtitle">Superadmin Login</p>
+      <p class="login-card__subtitle">Admin Portal Login</p>
     </header>
 
     <form class="login-form" @submit.prevent="submitLogin">
@@ -42,7 +64,6 @@ function submitLogin() {
       <label class="form-group">
         <span class="form-label-row">
           <span class="form-label">Password</span>
-          <button class="forgot-link" type="button">Forgot password?</button>
         </span>
         <span class="input-shell">
           <AppIcon name="lock" />
@@ -65,8 +86,10 @@ function submitLogin() {
         </span>
       </label>
 
-      <button class="login-button" type="submit">
-        <span>Login</span>
+      <p v-if="error" class="login-error" role="alert">{{ error }}</p>
+
+      <button class="login-button" type="submit" :disabled="loading">
+        <span>{{ loading ? 'Signing in...' : 'Login' }}</span>
         <AppIcon name="arrow-right" />
       </button>
     </form>

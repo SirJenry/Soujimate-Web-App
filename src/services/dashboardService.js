@@ -41,6 +41,12 @@ import { db } from '@/lib/firebase'
  * @return {Promise<{users: Array, submissions: Array}>}
  */
 export async function fetchDashboardRecords(selectedDate) {
+  if (!db) {
+    throw new Error(
+      'Firebase is not configured. Set the required environment variables.',
+    )
+  }
+
   const usersSnapshot = await getDocs(collection(db, 'users'))
   const users = usersSnapshot.docs.map((document) => ({
     id: document.id,

@@ -4,6 +4,7 @@ import BrandMark from './BrandMark.vue'
 
 defineProps({
   open: { type: Boolean, default: false },
+  portalLabel: { type: String, default: 'Superadmin Portal' },
 })
 
 defineEmits(['logout', 'close'])
@@ -15,7 +16,7 @@ defineEmits(['logout', 'close'])
       <BrandMark />
       <div>
         <p class="brand__name">Soujimate</p>
-        <p class="brand__subtitle">Superadmin Portal</p>
+        <p class="brand__subtitle">{{ portalLabel }}</p>
       </div>
     </div>
 

@@ -3,6 +3,11 @@ import AppIcon from './AppIcon.vue'
 
 defineProps({
   theme: { type: String, default: 'light' },
+  title: { type: String, default: 'Cleaning Submission Dashboard' },
+  department: { type: String, default: '' },
+  avatarText: { type: String, default: 'SA' },
+  profileLabel: { type: String, default: 'Superadmin Profile' },
+  profileMeta: { type: String, default: '' },
 })
 
 defineEmits(['menu', 'toggle-theme'])
@@ -14,7 +19,12 @@ defineEmits(['menu', 'toggle-theme'])
       <button class="menu-button" type="button" aria-label="Open navigation" @click="$emit('menu')">
         <AppIcon name="menu" />
       </button>
-      <h1 class="top-header__title">Cleaning Submission Dashboard</h1>
+      <div class="top-header__heading">
+        <h1 class="top-header__title">{{ title }}</h1>
+        <span v-if="department" class="department-badge">
+          {{ department }}
+        </span>
+      </div>
     </div>
 
     <div class="top-header__actions">
@@ -32,8 +42,15 @@ defineEmits(['menu', 'toggle-theme'])
         <AppIcon :name="theme === 'dark' ? 'sun' : 'moon'" />
       </button>
       <div class="profile-chip">
-        <span class="profile-chip__avatar" aria-hidden="true">SA</span>
-        <span class="profile-chip__text">Superadmin Profile</span>
+        <span class="profile-chip__avatar" aria-hidden="true">
+          {{ avatarText }}
+        </span>
+        <span class="profile-chip__identity">
+          <strong class="profile-chip__text">{{ profileLabel }}</strong>
+          <small v-if="profileMeta" class="profile-chip__meta">
+            {{ profileMeta }}
+          </small>
+        </span>
       </div>
     </div>
   </header>

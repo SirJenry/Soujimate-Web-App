@@ -3,14 +3,22 @@ import AppIcon from './AppIcon.vue'
 
 defineProps({
   rows: { type: Array, required: true },
+  title: { type: String, default: 'Main Submission Log' },
+  showEmail: { type: Boolean, default: true },
+  showExport: { type: Boolean, default: true },
 })
 </script>
 
 <template>
   <section class="panel-card" aria-labelledby="submission-log-title">
     <header class="panel-card__header">
-      <h2 id="submission-log-title" class="panel-card__title">Main Submission Log</h2>
-      <button class="export-button" type="button" title="CSV export will be connected later">
+      <h2 id="submission-log-title" class="panel-card__title">{{ title }}</h2>
+      <button
+        v-if="showExport"
+        class="export-button"
+        type="button"
+        title="CSV export will be connected later"
+      >
         <span>Export CSV</span>
         <AppIcon name="download" />
       </button>
@@ -37,7 +45,9 @@ defineProps({
                 <span class="employee-avatar">{{ employee.initials }}</span>
                 <span style="min-width: 0">
                   <span class="employee-name">{{ employee.name }}</span>
-                  <span class="employee-email">{{ employee.email }}</span>
+                  <span v-if="showEmail" class="employee-email">
+                    {{ employee.email }}
+                  </span>
                 </span>
               </div>
             </td>
