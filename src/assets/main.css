@@ -126,13 +126,14 @@ select:focus-visible {
 
 .brand__mark {
   display: grid;
+  overflow: hidden;
   width: 42px;
   height: 42px;
   flex: 0 0 auto;
   place-items: center;
   border-radius: var(--radius-md);
-  background: var(--amber-light);
-  border: 1px solid rgba(245, 158, 11, 0.25);
+  border: 0;
+  background: transparent;
   transition: all var(--transition-fast);
 }
 
@@ -140,14 +141,16 @@ select:focus-visible {
   width: 48px;
   height: 48px;
   border-radius: var(--radius-lg);
-  background: var(--amber);
   border: none;
+  background: transparent;
   box-shadow: var(--shadow-amber);
 }
 
 .brand__glyph {
-  width: 22px;
-  height: 22px;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .brand__name {
@@ -2026,8 +2029,8 @@ select:focus-visible {
 }
 
 .user-portal__header .brand__mark {
-  border-color: rgba(245, 158, 11, 0.28);
-  background: #fffdf6;
+  border-color: transparent;
+  background: transparent;
   box-shadow: 0 8px 22px rgba(23, 32, 28, 0.08);
 }
 

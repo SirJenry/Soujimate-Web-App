@@ -32,8 +32,15 @@ const MAX_DOCUMENT_BYTES = 900 * 1024
  * @return {Promise<ImageBitmap|HTMLImageElement>} Decoded browser image.
  */
 async function loadImage(file) {
-  if ('createImageBitmap' in window) {
-    return createImageBitmap(file, { imageOrientation: 'from-image' })
+  if (typeof window.createImageBitmap === 'function') {
+    try {
+      return await window.createImageBitmap(file, {
+        imageOrientation: 'from-image',
+      })
+    } catch {
+      // Safari may expose createImageBitmap without supporting its options.
+      // Continue with the broadly supported HTMLImageElement decoder.
+    }
   }
 
   const source = URL.createObjectURL(file)

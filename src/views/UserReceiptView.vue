@@ -26,6 +26,7 @@ const props = defineProps({
 const emit = defineEmits(['logout'])
 
 const cameraVideo = ref(null)
+const nativeCameraInput = ref(null)
 const photos = ref([])
 const submission = ref(null)
 const loading = ref(true)
@@ -88,13 +89,15 @@ const canSubmit = computed(() => (
 // openCamera         (2.0) Start the device camera preview.
 // closeCamera        (3.0) Close the preview and release the camera.
 // captureCameraPhoto (4.0) Capture and prepare one camera image.
-// stopCameraStream   (5.0) Stop every active camera media track.
-// removePhoto        (6.0) Remove one prepared photo.
-// requestSubmit      (7.0) Open the receipt submission confirmation.
-// closeConfirmation  (8.0) Close the receipt submission confirmation.
-// submitReceipt      (9.0) Upload photos and create the daily receipt.
-// mapFirebaseError  (10.0) Convert service errors into safe UI messages.
-// logout            (11.0) Request termination of the User session.
+// handleNativeCamera (5.0) Receive an image from the iPhone camera.
+// stageCameraFile    (6.0) Compress and add one camera image.
+// stopCameraStream   (7.0) Stop every active camera media track.
+// removePhoto        (8.0) Remove one prepared photo.
+// requestSubmit      (9.0) Open the receipt submission confirmation.
+// closeConfirmation (10.0) Close the receipt submission confirmation.
+// submitReceipt     (11.0) Upload photos and create the daily receipt.
+// mapFirebaseError  (12.0) Convert service errors into safe UI messages.
+// logout            (13.0) Request termination of the User session.
 
 /**
  * <Layer number> (1.0)
@@ -134,7 +137,19 @@ async function openCamera() {
   error.value = ''
   success.value = ''
 
-  if (!navigator.mediaDevices?.getUserMedia) {
+  const deviceNavigator = window.navigator
+  const isAppleMobile = /iPhone|iPad|iPod/i.test(deviceNavigator.userAgent)
+    || (
+      deviceNavigator.platform === 'MacIntel'
+      && deviceNavigator.maxTouchPoints > 1
+    )
+
+  if (isAppleMobile) {
+    nativeCameraInput.value?.click()
+    return
+  }
+
+  if (!deviceNavigator.mediaDevices?.getUserMedia) {
     error.value = 'This browser does not support live camera access.'
     return
   }
@@ -143,7 +158,7 @@ async function openCamera() {
   cameraStarting.value = true
 
   try {
-    cameraStream = await navigator.mediaDevices.getUserMedia({
+    cameraStream = await deviceNavigator.mediaDevices.getUserMedia({
       audio: false,
       video: {
         facingMode: { ideal: 'environment' },
@@ -232,14 +247,7 @@ async function captureCameraPhoto() {
     const sourceFile = new File([sourceBlob], fileName, {
       type: 'image/jpeg',
     })
-    const blob = await compressReceiptImage(sourceFile)
-
-    photos.value.push({
-      blob,
-      id: crypto.randomUUID(),
-      name: fileName,
-      previewUrl: URL.createObjectURL(blob),
-    })
+    await stageCameraFile(sourceFile)
     closeCamera()
   } catch (captureError) {
     error.value = captureError?.message || 'The photo could not be added.'
@@ -250,6 +258,60 @@ async function captureCameraPhoto() {
 
 /**
  * <Layer number> (5.0)
+ *
+ * <Processing name> handleNativeCamera
+ * <Function> Stage a photo returned by the native iPhone camera picker.
+ *
+ * @param {Event} event Native camera input change event.
+ * @return {Promise<void>}
+ */
+async function handleNativeCamera(event) {
+  const input = event.currentTarget
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+
+  processing.value = true
+  error.value = ''
+  success.value = ''
+
+  try {
+    await stageCameraFile(file)
+  } catch (cameraFileError) {
+    error.value = cameraFileError?.message || 'The photo could not be added.'
+  } finally {
+    processing.value = false
+  }
+}
+
+/**
+ * <Layer number> (6.0)
+ *
+ * <Processing name> stageCameraFile
+ * <Function> Compress and add one camera image to the receipt preview list.
+ *
+ * @param {File} file Camera image file.
+ * @return {Promise<void>}
+ */
+async function stageCameraFile(file) {
+  if (photos.value.length >= MAX_RECEIPT_PHOTOS) {
+    throw new Error(`You can attach up to ${MAX_RECEIPT_PHOTOS} photos.`)
+  }
+
+  const blob = await compressReceiptImage(file)
+  const generatedId = window.crypto?.randomUUID?.()
+    || `photo-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+  photos.value.push({
+    blob,
+    id: generatedId,
+    name: file.name || `Receipt ${photos.value.length + 1}`,
+    previewUrl: URL.createObjectURL(blob),
+  })
+}
+
+/**
+ * <Layer number> (7.0)
  *
  * <Processing name> stopCameraStream
  * <Function> Stop active media tracks and detach the video preview.
@@ -263,7 +325,7 @@ function stopCameraStream() {
 }
 
 /**
- * <Layer number> (6.0)
+ * <Layer number> (8.0)
  *
  * <Processing name> removePhoto
  * <Function> Remove one staged photo and release its preview URL.
@@ -279,7 +341,7 @@ function removePhoto(photoId) {
 }
 
 /**
- * <Layer number> (7.0)
+ * <Layer number> (9.0)
  *
  * <Processing name> requestSubmit
  * <Function> Show confirmation before creating the daily receipt.
@@ -293,7 +355,7 @@ function requestSubmit() {
 }
 
 /**
- * <Layer number> (8.0)
+ * <Layer number> (10.0)
  *
  * <Processing name> closeConfirmation
  * <Function> Close the receipt confirmation without saving.
@@ -307,7 +369,7 @@ function closeConfirmation() {
 }
 
 /**
- * <Layer number> (9.0)
+ * <Layer number> (11.0)
  *
  * <Processing name> submitReceipt
  * <Function> Upload staged photos and create the active shift submission.
@@ -345,7 +407,7 @@ async function submitReceipt() {
 }
 
 /**
- * <Layer number> (10.0)
+ * <Layer number> (12.0)
  *
  * <Processing name> mapFirebaseError
  * <Function> Convert Firebase and validation errors into safe UI messages.
@@ -365,7 +427,7 @@ function mapFirebaseError(sourceError) {
 }
 
 /**
- * <Layer number> (11.0)
+ * <Layer number> (13.0)
  *
  * <Processing name> logout
  * <Function> Request Firebase logout from the application shell.
@@ -569,6 +631,15 @@ onBeforeUnmount(() => {
               </div>
             </div>
           </div>
+
+          <input
+            ref="nativeCameraInput"
+            class="visually-hidden"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            @change="handleNativeCamera"
+          />
 
           <p v-if="uploadProgress" class="proof-alert" role="status">{{ uploadProgress }}</p>
           <p v-if="error" class="proof-alert proof-alert--error" role="alert">{{ error }}</p>
