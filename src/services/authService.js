@@ -21,7 +21,7 @@ export const SUPERADMIN_EMAIL = 'superadmin@tenseiph.com'
 /******************************************************************************/
 // findUserProfile    (1.0) Find the authenticated user's Firestore profile.
 // resolveAuthSession (2.0) Validate role and build the application session.
-// signInAuthorizedUser (3.0) Authenticate an Admin or Superadmin.
+// signInAuthorizedUser (3.0) Authenticate an authorized portal account.
 // observeAuthState   (4.0) Observe and validate the persisted session.
 // signOutUser        (5.0) End the current Firebase session.
 
@@ -74,19 +74,24 @@ async function resolveAuthSession(user) {
 
   const profile = await findUserProfile(user)
   const role = String(profile?.role || '').toLowerCase()
-  if (role !== 'admin' || profile?.isActive === false || !profile?.division) {
+  const isAdmin = role === 'admin'
+  const isUser = role === 'user'
+  if ((!isAdmin && !isUser) || profile?.isActive === false) {
+    return null
+  }
+  if (isAdmin && !profile?.division) {
     return null
   }
 
   const displayName = [profile.firstName, profile.lastName]
     .filter(Boolean)
-    .join(' ') || profile.email || 'Admin Profile'
+    .join(' ') || profile.email || `${isAdmin ? 'Admin' : 'User'} Profile`
 
   return {
     user,
     profile,
-    role: 'Admin',
-    division: profile.division,
+    role: isAdmin ? 'Admin' : 'User',
+    division: profile.division || null,
     displayName,
   }
 }
@@ -95,7 +100,7 @@ async function resolveAuthSession(user) {
  * <Layer number> (3.0)
  *
  * <Processing name> signInAuthorizedUser
- * <Function> Authenticate and authorize an Admin or Superadmin account.
+ * <Function> Authenticate and authorize a User, Admin, or Superadmin account.
  *
  * @param {string} email Login email address.
  * @param {string} password Login password.
@@ -122,7 +127,7 @@ export async function signInAuthorizedUser(email, password) {
  * <Layer number> (4.0)
  *
  * <Processing name> observeAuthState
- * <Function> Observe and validate persisted Admin or Superadmin sessions.
+ * <Function> Observe and validate persisted authorized portal sessions.
  *
  * @param {(session: Object|null) => void} callback Auth state callback.
  * @return {import('firebase/auth').Unsubscribe} Auth observer unsubscribe.

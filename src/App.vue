@@ -12,6 +12,9 @@ const DashboardView = defineAsyncComponent(() =>
 const AdminDashboardView = defineAsyncComponent(() =>
   import('@/views/AdminDashboardView.vue'),
 )
+const UserReceiptView = defineAsyncComponent(() =>
+  import('@/views/UserReceiptView.vue'),
+)
 
 const currentPath = ref(window.location.pathname)
 const authChecked = ref(false)
@@ -59,11 +62,13 @@ function enforceAuthRoute() {
     return
   }
 
-  replaceRoute(
-    authSession.value.role === 'Admin'
-      ? '/admin/dashboard'
-      : '/dashboard',
-  )
+  const roleRoutes = {
+    Admin: '/admin/dashboard',
+    SuperAdmin: '/dashboard',
+    User: '/user/receipt',
+  }
+
+  replaceRoute(roleRoutes[authSession.value.role] || '/login')
 }
 
 /**
@@ -116,6 +121,11 @@ onBeforeUnmount(() => {
   <LoginView v-else-if="!authSession" />
   <AdminDashboardView
     v-else-if="authSession.role === 'Admin'"
+    :auth-session="authSession"
+    @logout="logout"
+  />
+  <UserReceiptView
+    v-else-if="authSession.role === 'User'"
     :auth-session="authSession"
     @logout="logout"
   />

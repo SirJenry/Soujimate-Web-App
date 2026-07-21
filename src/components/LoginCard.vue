@@ -19,7 +19,7 @@ const loading = ref(false);
  * <Layer number> (1.0)
  *
  * <Processing name> submitLogin
- * <Function> Authenticate an authorized Admin or Superadmin account.
+ * <Function> Authenticate an authorized SoujiMate portal account.
  *
  * @return {Promise<void>}
  */
@@ -42,7 +42,7 @@ async function submitLogin() {
     <header class="login-card__header">
       <BrandMark login />
       <h1 id="login-title" class="login-card__title">Soujimate</h1>
-      <p class="login-card__subtitle">Admin/Superadmin Portal Login</p>
+      <p class="login-card__subtitle">Team Portal Login</p>
     </header>
 
     <form class="login-form" @submit.prevent="submitLogin">
@@ -96,7 +96,7 @@ async function submitLogin() {
 
     <footer class="login-card__footer">
       <AppIcon name="shield" />
-      <span>Admin/Superadmin access only</span>
+      <span>Secure access for users and administrators</span>
     </footer>
   </section>
 </template>

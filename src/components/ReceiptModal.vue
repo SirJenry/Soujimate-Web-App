@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import AppIcon from './AppIcon.vue'
+import { normalizeReceiptImageSource } from '@/utils/receiptUtils'
 
 const props = defineProps({
   employee: { type: Object, default: null },
@@ -25,41 +26,18 @@ const submissionTime = computed(() => {
   }).format(date)
 })
 
-/**
- * Convert a stored proof value into a browser-renderable image source.
- * Supports full URLs, ready-made data URIs, and raw Base64 strings
- * (which are missing the required `data:` prefix).
- *
- * @param {string} value Stored proof value.
- * @return {string} Renderable image source.
- */
-function toImageSrc(value) {
-  if (typeof value !== 'string') return ''
-  const trimmed = value.trim()
-  if (!trimmed) return ''
-  if (trimmed.startsWith('data:') || /^https?:\/\//i.test(trimmed)) {
-    return trimmed
-  }
-
-  let mimeType = 'image/jpeg'
-  if (trimmed.startsWith('iVBORw0KGgo')) mimeType = 'image/png'
-  else if (trimmed.startsWith('R0lGOD')) mimeType = 'image/gif'
-  else if (trimmed.startsWith('UklGR')) mimeType = 'image/webp'
-  else if (trimmed.startsWith('PHN2Zy') || trimmed.startsWith('PD94bWw')) {
-    mimeType = 'image/svg+xml'
-  }
-
-  return `data:${mimeType};base64,${trimmed}`
-}
-
 const viewMode = ref('scroll')
 
 const images = computed(() => {
   if (!props.employee) return []
   const proof = props.employee.submissionProof
   if (!proof) return []
-  if (Array.isArray(proof)) return proof.map(toImageSrc).filter(Boolean)
-  if (typeof proof === 'string') return [toImageSrc(proof)].filter(Boolean)
+  if (Array.isArray(proof)) {
+    return proof.map(normalizeReceiptImageSource).filter(Boolean)
+  }
+  if (typeof proof === 'string') {
+    return [normalizeReceiptImageSource(proof)].filter(Boolean)
+  }
   return []
 })
 
