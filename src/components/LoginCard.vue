@@ -4,7 +4,7 @@ import AppIcon from "./AppIcon.vue";
 import BrandMark from "./BrandMark.vue";
 import { signInAuthorizedUser } from "@/services/authService";
 
-const email = ref("");
+const identifier = ref("");
 const password = ref("");
 const showPassword = ref(false);
 const error = ref("");
@@ -28,7 +28,7 @@ async function submitLogin() {
   loading.value = true;
 
   try {
-    await signInAuthorizedUser(email.value, password.value);
+    await signInAuthorizedUser(identifier.value, password.value);
   } catch {
     error.value = "Invalid email or password.";
   } finally {
@@ -47,18 +47,25 @@ async function submitLogin() {
 
     <form class="login-form" @submit.prevent="submitLogin">
       <label class="form-group">
-        <span class="form-label">Email address</span>
+        <span class="form-label">Username or email</span>
         <span class="input-shell">
           <AppIcon name="mail" />
           <input
-            v-model="email"
+            v-model="identifier"
             class="form-input"
-            type="email"
-            name="email"
-            autocomplete="email"
+            type="text"
+            name="username"
+            autocomplete="username"
+            autocapitalize="none"
+            inputmode="email"
+            placeholder="Username"
+            spellcheck="false"
             required
           />
         </span>
+        <small class="form-hint">
+          @tenseiph.com is added automatically when omitted.
+        </small>
       </label>
 
       <label class="form-group">
@@ -73,6 +80,7 @@ async function submitLogin() {
             :type="showPassword ? 'text' : 'password'"
             name="password"
             autocomplete="current-password"
+            placeholder="Password"
             required
           />
           <button

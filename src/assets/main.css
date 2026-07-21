@@ -278,6 +278,12 @@ select:focus-visible {
   letter-spacing: 0.02em;
 }
 
+.form-hint {
+  color: var(--slate-muted);
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
 .forgot-link {
   border: 0;
   padding: 0;

@@ -13,6 +13,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { auth, db } from '@/lib/firebase'
+import { normalizeLoginIdentifier } from '@/utils/authUtils'
 
 export const SUPERADMIN_EMAIL = 'superadmin@tenseiph.com'
 
@@ -102,16 +103,16 @@ async function resolveAuthSession(user) {
  * <Processing name> signInAuthorizedUser
  * <Function> Authenticate and authorize a User, Admin, or Superadmin account.
  *
- * @param {string} email Login email address.
+ * @param {string} identifier Login username or email address.
  * @param {string} password Login password.
  * @return {Promise<Object>} Authorized application session.
  */
-export async function signInAuthorizedUser(email, password) {
+export async function signInAuthorizedUser(identifier, password) {
   if (!auth) throw new Error('Invalid credentials.')
 
   const credential = await signInWithEmailAndPassword(
     auth,
-    email.trim(),
+    normalizeLoginIdentifier(identifier),
     password,
   )
   const session = await resolveAuthSession(credential.user)
