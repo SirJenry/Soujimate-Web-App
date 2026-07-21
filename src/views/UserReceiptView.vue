@@ -15,6 +15,8 @@ import {
   submitUserReceipt,
 } from '@/services/userReceiptService'
 import {
+  buildAssignedTaskStatuses,
+  getAssignedTaskList,
   getShiftDate,
   normalizeReceiptImageSource,
 } from '@/utils/receiptUtils'
@@ -28,6 +30,7 @@ const emit = defineEmits(['logout'])
 const cameraVideo = ref(null)
 const nativeCameraInput = ref(null)
 const photos = ref([])
+const selectedTasks = ref([])
 const submission = ref(null)
 const loading = ref(true)
 const processing = ref(false)
@@ -46,6 +49,10 @@ const assignedArea = computed(() => (
   profile.value.assignedArea || profile.value.assigned_area || 'No Area'
 ))
 const rotationNumber = computed(() => profile.value.rotationNumber || '—')
+const assignedTaskList = computed(() => getAssignedTaskList(profile.value))
+const submittedTaskEntries = computed(() => Object.entries(
+  submission.value?.assignedTasks || {},
+))
 const userInitials = computed(() => props.authSession.displayName
   .split(/\s+/)
   .filter(Boolean)
@@ -77,6 +84,8 @@ const canAddPhotos = computed(() => (
 const canSubmit = computed(() => (
   !submission.value
   && photos.value.length > 0
+  && assignedTaskList.value.length > 0
+  && selectedTasks.value.length > 0
   && assignedArea.value !== 'No Area'
   && !processing.value
   && !submitting.value
@@ -389,6 +398,10 @@ async function submitReceipt() {
     const created = await submitUserReceipt({
       session: props.authSession,
       images: photos.value.map((photo) => photo.blob),
+      assignedTasks: buildAssignedTaskStatuses(
+        assignedTaskList.value,
+        selectedTasks.value,
+      ),
       onProgress: (message) => {
         uploadProgress.value = message
       },
@@ -396,6 +409,7 @@ async function submitReceipt() {
 
     photos.value.forEach((photo) => URL.revokeObjectURL(photo.previewUrl))
     photos.value = []
+    selectedTasks.value = []
     submission.value = created
     success.value = 'Receipt submitted successfully. Your Admin can now review it.'
   } catch (submitError) {
@@ -475,7 +489,13 @@ onBeforeUnmount(() => {
             :class="submission ? 'proof-state--done' : 'proof-state--waiting'"
           >
             <span aria-hidden="true" />
-            {{ submission ? 'Submitted' : photos.length ? 'Ready to submit' : 'Awaiting photos' }}
+            {{
+              submission
+                ? 'Submitted'
+                : photos.length && selectedTasks.length
+                  ? 'Ready to submit'
+                  : 'Awaiting proof'
+            }}
           </span>
         </div>
 
@@ -512,17 +532,17 @@ onBeforeUnmount(() => {
         </li>
         <li
           class="proof-step"
-          :class="submission || photos.length ? 'proof-step--done' : 'proof-step--active'"
+          :class="submission || (photos.length && selectedTasks.length) ? 'proof-step--done' : 'proof-step--active'"
         >
           <span class="proof-step__marker">2</span>
-          <span><strong>Add photos</strong><small>{{ submission || photos.length ? 'Complete' : 'Current step' }}</small></span>
+          <span><strong>Complete proof</strong><small>{{ submission || (photos.length && selectedTasks.length) ? 'Complete' : 'Current step' }}</small></span>
         </li>
         <li
           class="proof-step"
-          :class="submission ? 'proof-step--done' : photos.length ? 'proof-step--active' : ''"
+          :class="submission ? 'proof-step--done' : photos.length && selectedTasks.length ? 'proof-step--active' : ''"
         >
           <span class="proof-step__marker">3</span>
-          <span><strong>Submit</strong><small>{{ submission ? 'Complete' : photos.length ? 'Current step' : 'Pending' }}</small></span>
+          <span><strong>Submit</strong><small>{{ submission ? 'Complete' : photos.length && selectedTasks.length ? 'Current step' : 'Pending' }}</small></span>
         </li>
       </ol>
 
@@ -551,6 +571,69 @@ onBeforeUnmount(() => {
         </dl>
         <p v-if="assignedArea === 'No Area'" class="proof-alert proof-alert--error">
           No cleaning area is assigned. Contact your Admin before submitting.
+        </p>
+      </section>
+
+      <section class="proof-panel proof-tasks" aria-labelledby="tasks-title">
+        <header class="proof-tasks__header">
+          <div>
+            <h2 id="tasks-title">Completed cleaning tasks</h2>
+            <p v-if="!submission">Check every part you completed today.</p>
+          </div>
+          <span v-if="!submission">
+            {{ selectedTasks.length }} / {{ assignedTaskList.length }} checked
+          </span>
+        </header>
+
+        <div v-if="submission && submittedTaskEntries.length" class="proof-task-list">
+          <div
+            v-for="([task, status], index) in submittedTaskEntries"
+            :key="task"
+            class="proof-task-item proof-task-item--readonly"
+            :class="{ 'proof-task-item--done': status === 'Done' }"
+          >
+            <span class="proof-task-item__check" aria-hidden="true">
+              <AppIcon v-if="status === 'Done'" name="check-circle" />
+              <span v-else>{{ index + 1 }}</span>
+            </span>
+            <span><strong>{{ task }}</strong><small>{{ status }}</small></span>
+          </div>
+        </div>
+
+        <div v-else-if="!submission && assignedTaskList.length" class="proof-task-list">
+          <label
+            v-for="(task, index) in assignedTaskList"
+            :key="task"
+            class="proof-task-item"
+            :class="{ 'proof-task-item--done': selectedTasks.includes(task) }"
+          >
+            <input
+              v-model="selectedTasks"
+              type="checkbox"
+              :value="task"
+              :disabled="processing || submitting"
+            />
+            <span class="proof-task-item__check" aria-hidden="true">
+              <AppIcon
+                v-if="selectedTasks.includes(task)"
+                name="check-circle"
+              />
+              <span v-else>{{ index + 1 }}</span>
+            </span>
+            <span><strong>{{ task }}</strong><small>{{ selectedTasks.includes(task) ? 'Done' : 'Not checked' }}</small></span>
+          </label>
+        </div>
+
+        <p
+          v-else
+          class="proof-alert"
+          :class="{ 'proof-alert--error': !submission }"
+        >
+          {{
+            submission
+              ? 'No task status was recorded for this submission.'
+              : 'No cleaning tasks are assigned. Contact your Admin before submitting.'
+          }}
         </p>
       </section>
 
@@ -650,7 +733,16 @@ onBeforeUnmount(() => {
       <footer v-if="!submission" class="proof-submit-bar">
         <span class="proof-submit-bar__count">
           <AppIcon name="image" />
-          <span><strong>{{ photos.length }} {{ photos.length === 1 ? 'photo' : 'photos' }} added</strong><small>Maximum {{ MAX_RECEIPT_PHOTOS }} photos</small></span>
+          <span>
+            <strong>
+              {{ photos.length }}
+              {{ photos.length === 1 ? 'photo' : 'photos' }} added
+            </strong>
+            <small>
+              {{ selectedTasks.length }} task(s) checked · Maximum
+              {{ MAX_RECEIPT_PHOTOS }} photos
+            </small>
+          </span>
         </span>
         <button type="button" :disabled="!canSubmit" @click="requestSubmit">
           <AppIcon name="arrow-right" />
@@ -738,8 +830,8 @@ onBeforeUnmount(() => {
             </span>
             <h2 id="proof-confirm-title">Submit cleaning proof?</h2>
             <p id="proof-confirm-description">
-              Confirm that the selected photos clearly show your completed
-              cleaning assignment.
+              Confirm {{ selectedTasks.length }} completed task(s) and
+              {{ photos.length }} cleaning photo(s) for this submission.
             </p>
             <div class="proof-confirm-dialog__actions">
               <button type="button" @click="closeConfirmation">Cancel</button>

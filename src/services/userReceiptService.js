@@ -188,10 +188,16 @@ export async function getUserReceipt(userId, shiftDate = getShiftDate()) {
  * @param {Object} options Submission options.
  * @param {Object} options.session Authenticated User session.
  * @param {Blob[]} options.images Compressed receipt images.
+ * @param {Object<string, string>} options.assignedTasks Task status map.
  * @param {(message: string) => void} options.onProgress Progress callback.
  * @return {Promise<Object>} Created receipt data.
  */
-export async function submitUserReceipt({ session, images, onProgress }) {
+export async function submitUserReceipt({
+  session,
+  images,
+  assignedTasks,
+  onProgress,
+}) {
   if (!db) throw new Error('Firebase is not configured.')
   if (!session?.user?.uid) throw new Error('Your secure session has expired.')
   if (!Array.isArray(images) || images.length === 0) {
@@ -199,6 +205,18 @@ export async function submitUserReceipt({ session, images, onProgress }) {
   }
   if (images.length > MAX_RECEIPT_PHOTOS) {
     throw new Error(`Only ${MAX_RECEIPT_PHOTOS} receipt photos are allowed.`)
+  }
+  if (!assignedTasks || typeof assignedTasks !== 'object') {
+    throw new Error('Please check at least one completed cleaning task.')
+  }
+  const normalizedTasks = Object.fromEntries(
+    Object.entries(assignedTasks).map(([task, status]) => [
+      task,
+      status === 'Done' ? 'Done' : 'Pending',
+    ]),
+  )
+  if (!Object.values(normalizedTasks).includes('Done')) {
+    throw new Error('Please check at least one completed cleaning task.')
   }
 
   const userId = session.user.uid
@@ -227,13 +245,9 @@ export async function submitUserReceipt({ session, images, onProgress }) {
     receiptImages.push(await blobToBase64(image))
   }
 
-  const assignedTasks = typeof profile.assignedTasks === 'object'
-    && profile.assignedTasks !== null
-    ? profile.assignedTasks
-    : {}
   const receiptData = {
     assignedArea,
-    assignedTasks,
+    assignedTasks: normalizedTasks,
     division: profile.division || '',
     email: session.user.email || profile.email || '',
     firstName: profile.firstName || '',

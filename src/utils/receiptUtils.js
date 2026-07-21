@@ -3,6 +3,8 @@
 /******************************************************************************/
 // getShiftDate               (1.0) Resolve the active 8:00 AM shift date.
 // normalizeReceiptImageSource (2.0) Build a browser-safe receipt image source.
+// getAssignedTaskList        (3.0) Resolve the user's active cleaning tasks.
+// buildAssignedTaskStatuses  (4.0) Map checked tasks to Android statuses.
 
 const SHIFT_START_HOUR = 8
 
@@ -57,4 +59,57 @@ export function normalizeReceiptImageSource(value) {
   }
 
   return `data:${mimeType};base64,${trimmed}`
+}
+
+/**
+ * <Layer number> (3.0)
+ *
+ * <Processing name> getAssignedTaskList
+ * <Function> Resolve and normalize the active rotation's cleaning tasks.
+ *
+ * @param {Object} profile Authenticated user's Firestore profile.
+ * @return {string[]} Assigned task names in their configured order.
+ */
+export function getAssignedTaskList(profile = {}) {
+  const rotation = profile.rotationNumber
+    || profile.rotation_number
+    || profile.rotation
+    || ''
+  const rotationTask = rotation
+    ? profile[`rotation${rotation}_task`]
+      || profile[`rotation${rotation}Task`]
+    : ''
+  const source = rotationTask
+    || profile.assignedTask
+    || profile.assigned_task
+    || profile.assignedTasks
+    || ''
+  const values = Array.isArray(source)
+    ? source
+    : typeof source === 'object' && source !== null
+      ? Object.keys(source)
+      : String(source).split('|')
+
+  return [...new Set(values
+    .map((task) => String(task).trim())
+    .filter((task) => task
+      && !['none', 'no task'].includes(task.toLowerCase())))]
+}
+
+/**
+ * <Layer number> (4.0)
+ *
+ * <Processing name> buildAssignedTaskStatuses
+ * <Function> Match Android's Done and Pending Firestore task structure.
+ *
+ * @param {string[]} taskList Every task assigned to the user.
+ * @param {string[]} selectedTasks Tasks checked as completed.
+ * @return {Object<string, string>} Task names mapped to Done or Pending.
+ */
+export function buildAssignedTaskStatuses(taskList, selectedTasks) {
+  const completed = new Set(selectedTasks)
+  return Object.fromEntries(taskList.map((task) => [
+    task,
+    completed.has(task) ? 'Done' : 'Pending',
+  ]))
 }
