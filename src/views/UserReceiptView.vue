@@ -1,6 +1,7 @@
 <script setup>
 import {
   computed,
+  nextTick,
   onBeforeUnmount,
   onMounted,
   ref,
@@ -24,17 +25,19 @@ const props = defineProps({
 
 const emit = defineEmits(['logout'])
 
-const cameraInput = ref(null)
-const galleryInput = ref(null)
+const cameraVideo = ref(null)
 const photos = ref([])
 const submission = ref(null)
 const loading = ref(true)
 const processing = ref(false)
 const submitting = ref(false)
+const cameraOpen = ref(false)
+const cameraStarting = ref(false)
 const showSubmitConfirmation = ref(false)
 const uploadProgress = ref('')
 const error = ref('')
 const success = ref('')
+let cameraStream = null
 
 const shiftDate = getShiftDate()
 const profile = computed(() => props.authSession.profile || {})
@@ -82,15 +85,16 @@ const canSubmit = computed(() => (
 /* Processing Hierarchy                                                       */
 /******************************************************************************/
 // loadSubmission    (1.0) Load the active shift receipt.
-// openCamera        (2.0) Open the device camera picker.
-// openGallery       (3.0) Open the device image picker.
-// addFiles          (4.0) Validate and prepare selected photos.
-// removePhoto       (5.0) Remove one prepared photo.
-// requestSubmit     (6.0) Open the receipt submission confirmation.
-// closeConfirmation (7.0) Close the receipt submission confirmation.
-// submitReceipt     (8.0) Upload photos and create the daily receipt.
-// mapFirebaseError  (9.0) Convert service errors into safe UI messages.
-// logout           (10.0) Request termination of the User session.
+// openCamera         (2.0) Start the device camera preview.
+// closeCamera        (3.0) Close the preview and release the camera.
+// captureCameraPhoto (4.0) Capture and prepare one camera image.
+// stopCameraStream   (5.0) Stop every active camera media track.
+// removePhoto        (6.0) Remove one prepared photo.
+// requestSubmit      (7.0) Open the receipt submission confirmation.
+// closeConfirmation  (8.0) Close the receipt submission confirmation.
+// submitReceipt      (9.0) Upload photos and create the daily receipt.
+// mapFirebaseError  (10.0) Convert service errors into safe UI messages.
+// logout            (11.0) Request termination of the User session.
 
 /**
  * <Layer number> (1.0)
@@ -120,68 +124,125 @@ async function loadSubmission() {
  * <Layer number> (2.0)
  *
  * <Processing name> openCamera
- * <Function> Open the device's outward-facing camera when supported.
+ * <Function> Start a live camera preview using the browser media API.
  *
- * @return {void}
+ * @return {Promise<void>}
  */
-function openCamera() {
+async function openCamera() {
+  if (!canAddPhotos.value) return
+
   error.value = ''
-  cameraInput.value?.click()
+  success.value = ''
+
+  if (!navigator.mediaDevices?.getUserMedia) {
+    error.value = 'This browser does not support live camera access.'
+    return
+  }
+
+  cameraOpen.value = true
+  cameraStarting.value = true
+
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        facingMode: { ideal: 'environment' },
+        height: { ideal: 1080 },
+        width: { ideal: 1920 },
+      },
+    })
+
+    if (!cameraOpen.value) {
+      stopCameraStream()
+      return
+    }
+
+    await nextTick()
+    if (!cameraVideo.value) {
+      throw new Error('The camera preview could not be opened.')
+    }
+
+    cameraVideo.value.srcObject = cameraStream
+    await cameraVideo.value.play()
+  } catch (cameraError) {
+    closeCamera()
+    if (cameraError?.name === 'NotAllowedError') {
+      error.value = 'Camera access was denied. Allow camera permission and try again.'
+    } else if (cameraError?.name === 'NotFoundError') {
+      error.value = 'No camera was found on this device.'
+    } else {
+      error.value = cameraError?.message || 'The camera could not be opened.'
+    }
+  } finally {
+    cameraStarting.value = false
+  }
 }
 
 /**
  * <Layer number> (3.0)
  *
- * <Processing name> openGallery
- * <Function> Open the platform image picker as a camera fallback.
+ * <Processing name> closeCamera
+ * <Function> Close the camera dialog and release the active media stream.
  *
  * @return {void}
  */
-function openGallery() {
-  error.value = ''
-  galleryInput.value?.click()
+function closeCamera() {
+  cameraOpen.value = false
+  cameraStarting.value = false
+  stopCameraStream()
 }
 
 /**
  * <Layer number> (4.0)
  *
- * <Processing name> addFiles
- * <Function> Validate, compress, preview, and stage selected receipt images.
+ * <Processing name> captureCameraPhoto
+ * <Function> Capture, compress, preview, and stage one camera image.
  *
- * @param {Event} event Native file-input change event.
  * @return {Promise<void>}
  */
-async function addFiles(event) {
-  const input = event.currentTarget
-  const availableSlots = MAX_RECEIPT_PHOTOS - photos.value.length
-  const selectedFiles = [...(input.files || [])]
-
-  input.value = ''
-  error.value = ''
-  success.value = ''
-  if (selectedFiles.length === 0) return
-  if (availableSlots <= 0) {
-    error.value = `You can attach up to ${MAX_RECEIPT_PHOTOS} photos.`
+async function captureCameraPhoto() {
+  const video = cameraVideo.value
+  if (!video?.videoWidth || !video?.videoHeight) {
+    error.value = 'The camera is not ready yet. Please try again.'
     return
-  }
-  if (selectedFiles.length > availableSlots) {
-    error.value = `Only ${availableSlots} more photo${availableSlots === 1 ? '' : 's'} can be added.`
   }
 
   processing.value = true
+  error.value = ''
+  success.value = ''
 
   try {
-    for (const file of selectedFiles.slice(0, availableSlots)) {
-      const blob = await compressReceiptImage(file)
-      photos.value.push({
-        blob,
-        id: crypto.randomUUID(),
-        name: file.name || `Receipt ${photos.value.length + 1}`,
-        previewUrl: URL.createObjectURL(blob),
-      })
-    }
-  } catch (fileError) {
-    error.value = fileError.message || 'One of the images could not be added.'
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const context = canvas.getContext('2d', { alpha: false })
+    if (!context) throw new Error('This browser cannot capture the photo.')
+
+    context.drawImage(video, 0, 0, canvas.width, canvas.height)
+    const sourceBlob = await new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => blob
+          ? resolve(blob)
+          : reject(new Error('The camera photo could not be created.')),
+        'image/jpeg',
+        0.92,
+      )
+    })
+    const fileName = `cleaning-proof-${Date.now()}.jpg`
+    const sourceFile = new File([sourceBlob], fileName, {
+      type: 'image/jpeg',
+    })
+    const blob = await compressReceiptImage(sourceFile)
+
+    photos.value.push({
+      blob,
+      id: crypto.randomUUID(),
+      name: fileName,
+      previewUrl: URL.createObjectURL(blob),
+    })
+    closeCamera()
+  } catch (captureError) {
+    error.value = captureError?.message || 'The photo could not be added.'
   } finally {
     processing.value = false
   }
@@ -189,6 +250,20 @@ async function addFiles(event) {
 
 /**
  * <Layer number> (5.0)
+ *
+ * <Processing name> stopCameraStream
+ * <Function> Stop active media tracks and detach the video preview.
+ *
+ * @return {void}
+ */
+function stopCameraStream() {
+  cameraStream?.getTracks().forEach((track) => track.stop())
+  cameraStream = null
+  if (cameraVideo.value) cameraVideo.value.srcObject = null
+}
+
+/**
+ * <Layer number> (6.0)
  *
  * <Processing name> removePhoto
  * <Function> Remove one staged photo and release its preview URL.
@@ -204,7 +279,7 @@ function removePhoto(photoId) {
 }
 
 /**
- * <Layer number> (6.0)
+ * <Layer number> (7.0)
  *
  * <Processing name> requestSubmit
  * <Function> Show confirmation before creating the daily receipt.
@@ -218,7 +293,7 @@ function requestSubmit() {
 }
 
 /**
- * <Layer number> (7.0)
+ * <Layer number> (8.0)
  *
  * <Processing name> closeConfirmation
  * <Function> Close the receipt confirmation without saving.
@@ -232,7 +307,7 @@ function closeConfirmation() {
 }
 
 /**
- * <Layer number> (8.0)
+ * <Layer number> (9.0)
  *
  * <Processing name> submitReceipt
  * <Function> Upload staged photos and create the active shift submission.
@@ -270,7 +345,7 @@ async function submitReceipt() {
 }
 
 /**
- * <Layer number> (9.0)
+ * <Layer number> (10.0)
  *
  * <Processing name> mapFirebaseError
  * <Function> Convert Firebase and validation errors into safe UI messages.
@@ -290,7 +365,7 @@ function mapFirebaseError(sourceError) {
 }
 
 /**
- * <Layer number> (10.0)
+ * <Layer number> (11.0)
  *
  * <Processing name> logout
  * <Function> Request Firebase logout from the application shell.
@@ -304,6 +379,7 @@ function logout() {
 onMounted(loadSubmission)
 
 onBeforeUnmount(() => {
+  stopCameraStream()
   photos.value.forEach((photo) => URL.revokeObjectURL(photo.previewUrl))
 })
 </script>
@@ -490,15 +566,9 @@ onBeforeUnmount(() => {
                 <button type="button" @click="openCamera">
                   <AppIcon name="camera" /> Take photo
                 </button>
-                <button type="button" @click="openGallery">
-                  <AppIcon name="image" /> Choose files
-                </button>
               </div>
             </div>
           </div>
-
-          <input ref="cameraInput" class="visually-hidden" type="file" accept="image/*" capture="environment" @change="addFiles" />
-          <input ref="galleryInput" class="visually-hidden" type="file" accept="image/*" multiple @change="addFiles" />
 
           <p v-if="uploadProgress" class="proof-alert" role="status">{{ uploadProgress }}</p>
           <p v-if="error" class="proof-alert proof-alert--error" role="alert">{{ error }}</p>
@@ -519,6 +589,65 @@ onBeforeUnmount(() => {
     </main>
 
     <Teleport to="body">
+      <Transition name="proof-camera">
+        <div
+          v-if="cameraOpen"
+          class="proof-camera-overlay"
+          role="presentation"
+          @click.self="closeCamera"
+        >
+          <section
+            class="proof-camera-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="proof-camera-title"
+          >
+            <header class="proof-camera-dialog__header">
+              <div>
+                <h2 id="proof-camera-title">Take cleaning photo</h2>
+                <p>Position the completed area clearly inside the frame.</p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close camera"
+                @click="closeCamera"
+              >
+                <AppIcon name="close" />
+              </button>
+            </header>
+
+            <div class="proof-camera-dialog__preview">
+              <video
+                ref="cameraVideo"
+                autoplay
+                muted
+                playsinline
+              />
+              <div
+                v-if="cameraStarting"
+                class="proof-camera-dialog__starting"
+                role="status"
+              >
+                <span class="proof-saving-overlay__spinner" />
+                <span>Starting camera...</span>
+              </div>
+            </div>
+
+            <div class="proof-camera-dialog__actions">
+              <button type="button" @click="closeCamera">Cancel</button>
+              <button
+                type="button"
+                :disabled="cameraStarting || processing"
+                @click="captureCameraPhoto"
+              >
+                <AppIcon name="camera" />
+                {{ processing ? 'Preparing...' : 'Capture photo' }}
+              </button>
+            </div>
+          </section>
+        </div>
+      </Transition>
+
       <Transition name="proof-confirm">
         <div
           v-if="showSubmitConfirmation"

@@ -3168,6 +3168,10 @@ select:focus-visible {
   background: #fff8e7;
 }
 
+.proof-dropzone__actions button:only-child {
+  min-width: 160px;
+}
+
 .proof-dropzone__actions button:hover,
 .proof-submit-bar > button:hover:not(:disabled) {
   border-color: #f59e0b;
@@ -3319,6 +3323,147 @@ select:focus-visible {
   background: #e9eef4;
   box-shadow: none;
   cursor: not-allowed;
+}
+
+.proof-camera-overlay {
+  position: fixed;
+  z-index: 9997;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(4px);
+}
+
+.proof-camera-dialog {
+  overflow: hidden;
+  width: min(100%, 760px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  color: #fff;
+  background: #171717;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+}
+
+.proof-camera-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+}
+
+.proof-camera-dialog__header h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.proof-camera-dialog__header p {
+  margin: 0.3rem 0 0;
+  color: #aeb8c5;
+  font-size: 0.7rem;
+}
+
+.proof-camera-dialog__header > button {
+  display: grid;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+}
+
+.proof-camera-dialog__header > button .icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.proof-camera-dialog__preview {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  background: #050505;
+}
+
+.proof-camera-dialog__preview video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.proof-camera-dialog__starting {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.8rem;
+  color: #d7dee8;
+  background: #0a0a0a;
+  font-size: 0.75rem;
+}
+
+.proof-camera-dialog__starting .proof-saving-overlay__spinner {
+  width: 40px;
+  height: 40px;
+  margin: 0;
+}
+
+.proof-camera-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.7rem;
+  padding: 1rem 1.1rem;
+}
+
+.proof-camera-dialog__actions button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 0.65rem 1rem;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.proof-camera-dialog__actions button:last-child {
+  min-width: 160px;
+  border-color: #e39108;
+  color: #271700;
+  background: #f59e0b;
+}
+
+.proof-camera-dialog__actions button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.proof-camera-dialog__actions .icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.proof-camera-enter-active,
+.proof-camera-leave-active {
+  transition: opacity 160ms ease;
+}
+
+.proof-camera-enter-from,
+.proof-camera-leave-to {
+  opacity: 0;
 }
 
 .proof-confirm-overlay {
@@ -3580,6 +3725,30 @@ select:focus-visible {
   .proof-confirm-dialog__actions {
     grid-template-columns: 1fr;
   }
+
+  .proof-camera-overlay {
+    padding: 0;
+  }
+
+  .proof-camera-dialog {
+    width: 100%;
+    min-height: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .proof-camera-dialog__preview {
+    aspect-ratio: 3 / 4;
+  }
+
+  .proof-camera-dialog__actions {
+    display: grid;
+    grid-template-columns: 0.75fr 1.25fr;
+  }
+
+  .proof-camera-dialog__actions button:last-child {
+    min-width: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3589,6 +3758,8 @@ select:focus-visible {
 
   .proof-saving-enter-active,
   .proof-saving-leave-active,
+  .proof-camera-enter-active,
+  .proof-camera-leave-active,
   .proof-confirm-enter-active,
   .proof-confirm-leave-active {
     transition: none;
