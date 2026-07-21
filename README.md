@@ -9,26 +9,17 @@ Active Firebase users with a Firestore `role` of `User` are routed to
 browsers, gallery selection, client-side compression, and a maximum of three
 photos per 8:00 AM shift.
 
-Images upload directly from the browser to Firebase Storage under:
-
-```text
-users/{uid}/receipts/{shiftDate}/{fileName}.jpg
-```
-
-Submission metadata is stored under:
+Images are resized to a maximum dimension of 800 pixels, compressed as JPEG,
+encoded as raw Base64, and stored with the submission under:
 
 ```text
 cleaning/{uid}/submissions/{shiftDate}
 ```
 
-The deployed Firebase Authentication token must provide the `role`, `division`,
-and `isActive` custom claims required by the project's Firestore and Storage
-rules. Users must have `isActive: true`, and the profile document should include
-`assignedArea` before they can submit.
-
-Cloud Storage for Firebase must be enabled. The deployed Storage rules must
-permit an active authenticated user to write image files below 10 MB only under
-their own `users/{uid}/...` path. Do not make the bucket public.
+This matches the Android receipt format and does not require Firebase Storage.
+The web app limits compressed images and the combined document size to remain
+below Firestore's 1 MiB document limit. Users must have `isActive: true`, and
+their profile document should include `assignedArea` before submission.
 
 ## Vercel Environment Variables
 
@@ -38,7 +29,6 @@ Configure these variables for Preview and Production deployments:
 VITE_FIREBASE_API_KEY
 VITE_FIREBASE_AUTH_DOMAIN
 VITE_FIREBASE_PROJECT_ID
-VITE_FIREBASE_STORAGE_BUCKET
 VITE_FIREBASE_MESSAGING_SENDER_ID
 VITE_FIREBASE_APP_ID
 ```
